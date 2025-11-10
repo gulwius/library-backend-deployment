@@ -7,7 +7,27 @@ import re
 
 from .models import Borrow, Book, Student
 
+from rest_framework import generics
+from .serializers import BookDetailsSerializer, LibraryBooksSerializer, StudentHistorySerializer
+
 # Create your views here.
+
+class BookListsView(generics.ListAPIView):
+   queryset = Book.objects.all()
+   serializer_class = LibraryBooksSerializer
+
+class BookDetailsView(generics.RetrieveAPIView):
+    queryset = Book.objects.all()
+    serializer_class = BookDetailsSerializer
+    lookup_field = "pk"
+
+class StudentHistoryView(generics.ListAPIView):
+    serializer_class = StudentHistorySerializer
+
+    def get_queryset(self):
+        tup_id = self.kwargs['tup_id']
+        return Borrow.objects.filter(borrower__tup_id=tup_id).order_by('-borrowed_date')
+
 def index(request):
     if request.method == "POST":
         year = request.POST.get('tup_id_year', '').strip()
@@ -18,7 +38,7 @@ def index(request):
                 Student.objects.get(tup_id=tup_id)
                 return HttpResponseRedirect(reverse('library:student', args=[digits]))
             except Student.DoesNotExist:
-                error_message = "Student ID not found (e.g., TUPM-23-1742)"
+                error_message = "Student ID not found"
         else:
             error_message = "Invalid format (select year and enter 4 digits)"
         return render(request, "books/index.html", {

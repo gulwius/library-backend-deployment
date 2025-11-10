@@ -1,8 +1,15 @@
 {% extends "books/layout.html" %}
+{% load static %}
 
 {% block body %}
     <h1>No.{{book.id}} {{book.title}}</h1>
-
+    <img src="{% if book.cover_image %}
+                {% static 'books/images/'|add:book.cover_image %}
+            {% else %}
+                {% static 'books/images/placeholder.jpg' %}
+            {% endif %}"
+            alt="{{book.title}} cover"
+            style="width: 100%; height: auto; max-width: 200px;">
     <ul>
         <li>
             Author/s:

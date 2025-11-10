@@ -22,6 +22,7 @@ class Book(models.Model):
     publication_year = models.IntegerField()
     subject = models.ManyToManyField(Subject)
     description = models.TextField(blank=True)
+    cover_image = models.TextField(max_length=64, blank=True, null=True, help_text="file name in static/books/images/(bookcover.png/.jpeg)")
 
     def __str__(self):
         authors = ", ".join(author.name for author in self.author.all())
