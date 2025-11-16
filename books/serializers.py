@@ -10,7 +10,7 @@ class BookDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Book
-        fields = ["id", "title", "author", "publication_year", "subject", "description", "cover_image", "status", "current_borrow"]
+        fields = ["id", "title", "author", "publication_year", "subject", "description", "cover_image", "cover_url", "status", "current_borrow"]
 
     def get_status(self, obj):
         borrow = Borrow.objects.filter(borrowing=obj, returned=False).first()
@@ -31,7 +31,7 @@ class LibraryBooksSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Book
-        fields = ["id", "title", "cover_image", "status"]
+        fields = ["id", "title", "cover_image", "cover_url", "status"]
 
     def get_status(self, obj):
         borrow = Borrow.objects.filter(borrowing=obj, returned=False).first()
