@@ -27,6 +27,12 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = 'adamconcepcion25@gmail.com'
+EMAIL_HOST_PASSWORD = 'iihc txjh wxhk dvqq'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_BACKEND = 'books.backends.email_backend.EmailBackend'
 
 # Application definition
 
