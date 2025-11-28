@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 
 from django.http import HttpResponseRedirect, Http404
@@ -8,7 +8,15 @@ import re
 from .models import Borrow, Book, Student
 
 from rest_framework import generics
-from .serializers import BookDetailsSerializer, LibraryBooksSerializer, StudentHistorySerializer
+from .serializers import BookDetailsSerializer, LibraryBooksSerializer, StudentHistorySerializer, StudentSerializer
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+
+from django.core.exceptions import ValidationError
+
+from django.contrib.auth import authenticate
 
 # Create your views here.
 
@@ -89,3 +97,67 @@ def student(request, tup_id):
         "student": student,
         "borrows": borrows
     })
+
+class CirculationView(APIView):
+    def post(self, request):
+        action = request.data.get('action') #"BORROW" OR "RETURN"
+        tup_id = request.data.get('tup_id')
+        book_ids = request.data.get('book_ids', [])
+
+        #1. FIND STUDENT
+        student = get_object_or_404(Student, tup_id=tup_id)
+
+        results = []
+
+        #2. PROCESS EACH BOOK
+        for book_id in book_ids:
+            book = get_object_or_404(Book, id=book_id)
+
+            if action == 'borrow':
+                #CHECK IF BORROWED
+                if Borrow.objects.filter(borrower=student, borrowing=book, returned=False).exists():
+                    results.append(f"❌{book.title}: Already borrowed")
+                    continue
+                
+                borrow_instance=Borrow(borrower=student, borrowing=book)
+                try:
+                    borrow_instance.full_clean()
+                    borrow_instance.save()
+                    results.append(f"✅ {book.title}: Successfully Borrowed")
+                except ValidationError as e:
+                    error_msg = e.messages[0] if e.messages else "Validation Error"
+                    results.append(f"⛔ {book.title}: Failed - {error_msg}")
+
+            elif action == 'return':
+                #FIND ACTIVE BORROW BOOKS
+                record = Borrow.objects.filter(borrower=student, borrowing=book, returned=False).first()
+                if record:
+                    record.returned = True
+                    record.save()
+                    results.append(f"↩️ {book.title}: Successfully Returned")
+                else:
+                    results.append(f"⚠️ {book.title}: Was not borrowed by this student")
+
+        return Response({"status": "success", "results": results}, status=status.HTTP_200_OK)
+
+
+class StudentListView(generics.ListAPIView):
+    queryset=Student.objects.all()
+    serializer_class=StudentSerializer
+
+
+class loginView(APIView):
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        
+        user = authenticate(username=username, password=password)
+        
+        if user is not None:
+            return Response({
+                "status": "success", 
+                "username": user.username,
+                "is_staff": user.is_staff
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({"status": "error", "message": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)

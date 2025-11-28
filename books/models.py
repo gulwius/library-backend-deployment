@@ -44,8 +44,8 @@ class Student(models.Model):
 class Borrow(models.Model):
     DAILY_LIMIT = 100
 
-    borrowing = models.ForeignKey(Book, on_delete=models.CASCADE)
-    borrower = models.ForeignKey(Student, on_delete=models.CASCADE)
+    borrowing = models.ForeignKey(Book, on_delete=models.CASCADE, related_name="borrowing")
+    borrower = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="borrower")
     borrowed_date = models.DateTimeField(default=timezone.now)
     due_date = models.DateTimeField(null=True, blank=True)
     duration_hours = models.IntegerField(default=24)
@@ -69,17 +69,22 @@ class Borrow(models.Model):
     
     def clean(self):
         if self.pk is None:
-            today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
-            today_end = today_start + datetime.timedelta(days=1)
 
-            already_borrowed_today = Borrow.objects.filter(
-                borrower = self.borrower,
-                borrowed_date__gte = today_start,
-                borrowed_date__lt = today_end
-            ).exists()
+            current_active_loans=Borrow.objects.filter(borrower=self.borrower, returned=False).count()
+            if current_active_loans >= 3:
+                raise ValidationError(f"{self.borrower.first} has already borrowed the limit of 3 books.")
+            
+            # today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            # today_end = today_start + datetime.timedelta(days=1)
 
-            if already_borrowed_today:
-                raise ValidationError(f"{self.borrower.first} has already borrowed a book today. Only 1 book per student per day allowed.")
+            # already_borrowed_today = Borrow.objects.filter(
+            #     borrower = self.borrower,
+            #     borrowed_date__gte = today_start,
+            #     borrowed_date__lt = today_end
+            # ).exists()
+
+            # if already_borrowed_today:
+            #     raise ValidationError(f"{self.borrower.first} has already borrowed a book today. Only 1 book per student per day allowed.")
             
             if Borrow.get_today_borrow_count() >= Borrow.DAILY_LIMIT:
                 raise ValidationError(
