@@ -27,6 +27,7 @@ class Book(models.Model):
     description = models.TextField(blank=True)
     cover_image = models.TextField(max_length=64, blank=True, null=True, help_text="file name in static/books/images/(bookcover.png/.jpeg)")
     cover_url = models.URLField(blank=True, null=True, help_text="Full url to book cover")
+    quantity = models.PositiveIntegerField(default=1)
     def __str__(self):
         authors = ", ".join(author.name for author in self.author.all())
         subjects = ", ".join(subject.name for subject in self.subject.all())

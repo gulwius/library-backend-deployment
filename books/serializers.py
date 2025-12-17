@@ -11,15 +11,22 @@ class LibraryBooksSerializer(serializers.ModelSerializer):
     # This controls the MAIN DASHBOARD STATS (Borrowed/Available/Total)
     author = serializers.StringRelatedField(many=True)
     status = serializers.SerializerMethodField()
+    available_copies = serializers.SerializerMethodField()
 
     class Meta:
         model = Book
         # Ensure these fields match your model exactly
-        fields = ["id", "author", "title", "cover_image", "cover_url", "status"]
+        fields = ["id", "author", "title", "cover_image", "cover_url", "status", "quantity", "available_copies"]
+
+    def get_available_copies(self, obj):
+        active_borrows = Borrow.objects.filter(borrowing=obj, returned=False).count()
+        return max(0, obj.quantity - active_borrows)
 
     def get_status(self, obj):
-        # This logic ensures the "Borrowed" count on the dashboard is correct
-        if Borrow.objects.filter(borrowing=obj, returned=False).exists():
+        active_borrows = Borrow.objects.filter(borrowing=obj, returned=False).count()
+        # # This logic ensures the "Borrowed" count on the dashboard is correct
+        # if Borrow.objects.filter(borrowing=obj, returned=False).exists():
+        if active_borrows >= obj.quantity:
             return "Borrowed"
         return "Available"
 
@@ -28,28 +35,45 @@ class BookDetailsSerializer(serializers.ModelSerializer):
     author = serializers.StringRelatedField(many=True)
     subject = serializers.StringRelatedField(many=True)
     status = serializers.SerializerMethodField()
-    current_borrow = serializers.SerializerMethodField()
+    available_copies = serializers.SerializerMethodField()
+    active_loans = serializers.SerializerMethodField()
 
     class Meta:
         model = Book
-        fields = ["id", "title", "author", "publication_year", "subject", "description", "cover_image", "cover_url", "status", "current_borrow"]
+        fields = ["id", "title", "author", "publication_year", "subject", "description", "cover_image", "cover_url", "status", "quantity", "available_copies", "active_loans"]
+
+    def get_available_copies(self, obj):
+        active_borrows = Borrow.objects.filter(borrowing=obj, returned=False).count()
+        return max(0, obj.quantity - active_borrows)
 
     def get_status(self, obj):
-        if Borrow.objects.filter(borrowing=obj, returned=False).exists():
-            return "Borrowed"
+        active_borrows = Borrow.objects.filter(borrowing=obj, returned=False).count()
+        if active_borrows >= obj.quantity:
+            return "Out of Stock"
         return "Available"
     
-    def get_current_borrow(self, obj):
-        borrow = Borrow.objects.filter(borrowing=obj, returned=False).first()
-        if borrow:
-            return {
-                "borrower": borrow.borrower.tup_id,
-                "borrowed_date": borrow.borrowed_date,
-                "due_date": borrow.due_date,
-                # I assumed your model uses .first and .last based on your code
-                "name": f"{borrow.borrower.first} {borrow.borrower.last}" 
+    def get_active_loans(self, obj):
+        borrows = Borrow.objects.filter(borrowing=obj, returned=False)
+        return [
+            {
+                "borrower": f"{b.borrower.first} {b.borrower.last} ({b.borrower.tup_id})",
+                "due_date": b.due_date,
+                "borrowed_date": b.borrowed_date
             }
-        return None
+            for b in borrows
+        ]
+    
+    # def get_current_borrow(self, obj):
+    #     borrow = Borrow.objects.filter(borrowing=obj, returned=False).first()
+    #     if borrow:
+    #         return {
+    #             "borrower": borrow.borrower.tup_id,
+    #             "borrowed_date": borrow.borrowed_date,
+    #             "due_date": borrow.due_date,
+    #             # I assumed your model uses .first and .last based on your code
+    #             "name": f"{borrow.borrower.first} {borrow.borrower.last}" 
+    #         }
+    #     return None
 
 class StudentHistorySerializer(serializers.ModelSerializer):
     # This controls the STUDENT HISTORY PAGE & PROFILE

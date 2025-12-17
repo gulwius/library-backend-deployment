@@ -2,15 +2,33 @@ from django.contrib import admin
 from django.utils.html import format_html
 from .models import Book, Student, Borrow, Author, Subject
 
-# Register your models here.
-
-admin.site.register(Book)
+# Register simple models
 admin.site.register(Student)
 admin.site.register(Author)
 admin.site.register(Subject)
 
+# Register Book with the new Quantity View
+class BookAdmin(admin.ModelAdmin):
+    list_display = ('title', 'publication_year', 'quantity_status')
+    search_fields = ('title',)
+    
+    def quantity_status(self, obj):
+        # Calculate availability for the admin list view
+        active = Borrow.objects.filter(borrowing=obj, returned=False).count()
+        available = max(0, obj.quantity - active)
+        
+        color = "green" if available > 0 else "red"
+        return format_html(
+            f'<span style="color: {color}; font-weight: bold;">{available} / {obj.quantity} Available</span>'
+        )
+    quantity_status.short_description = "Shelf Availability"
+
+# Register the Book model using the custom class
+admin.site.register(Book, BookAdmin)
+
+# Register Borrow with Daily Limit View
 class BorrowAdmin(admin.ModelAdmin):
-    list_display = ('borrowing', 'borrower', 'borrowed_date', 'due_date', 'duration_hours', 'returned')
+    list_display = ('borrowing', 'borrower', 'borrowed_date', 'due_date', 'returned')
     readonly_fields = ('borrowed_date', 'due_date', 'daily_limit_info')
     fields = ('borrowing', 'borrower', 'duration_hours', 'returned', 'borrowed_date', 'due_date', 'daily_limit_info')
     
@@ -44,9 +62,5 @@ class BorrowAdmin(admin.ModelAdmin):
         return format_html(html)
     
     daily_limit_info.short_description = "📊 Daily Borrow Limit Status"
-    
-    def get_readonly_fields(self, request, obj=None):
-        """Make sure daily_limit_info is always shown"""
-        return self.readonly_fields
 
 admin.site.register(Borrow, BorrowAdmin)

@@ -1,3 +1,5 @@
+from django_otp.plugins.otp_email.models import EmailDevice
+
 from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 from datetime import datetime, date
@@ -126,6 +128,11 @@ class CirculationView(APIView):
                 if Borrow.objects.filter(borrower=student, borrowing=book, returned=False).exists():
                     results.append(f"❌{book.title}: Already borrowed")
                     continue
+
+                active_borrows = Borrow.objects.filter(borrowing=book, returned=False).count()
+                if active_borrows >= book.quantity:
+                    results.append(f"⛔ {book.title}: All copies are currently borrowed")
+                    continue
                 
                 borrow_instance=Borrow(borrower=student, borrowing=book)
                 try:
@@ -177,17 +184,33 @@ class loginView(APIView):
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
+        otp_token = request.data.get('otp_token')
         
         user = authenticate(username=username, password=password)
         
         if user is not None:
+            device = EmailDevice.objects.filter(user=user, confirmed=True).first()
+            if device:
+                if not otp_token:
+                    device.generate_challenge()
+                    return Response({
+                        "status": "otp_required",
+                        "message": "Please enter the OTP sent to your email."
+                    }, status=status.HTTP_200_OK)
+                
+                is_valid = device.verify_token(otp_token)
+                if not is_valid:
+                    return Response({
+                        "status": "error", 
+                        "message": "Invalid OTP Code. Please try again.",
+                    }, status=status.HTTP_400_BAD_REQUEST)
             return Response({
-                "status": "success", 
+                "status": "success",
                 "username": user.username,
-                "is_staff": user.is_staff
+                "is_staff": user.is_staff,
             }, status=status.HTTP_200_OK)
-        else:
-            return Response({"status": "error", "message": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+        else: 
+            return Response({"status": "error", "message": "Invalid Credentials"}, status=status.HTTP_401_UNAUTHORIZED)
         
 class AdminDashboardView(APIView):
     def get(self, request):

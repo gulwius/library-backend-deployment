@@ -16,8 +16,33 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
+from django.contrib.auth.models import User
+
+from django_otp.admin import OTPAdminSite
+from django_otp.plugins.otp_email.models import EmailDevice
+from django_otp.plugins.otp_email.admin import EmailDeviceAdmin
+
+def is_verified(self):
+    """Check if user has a verified OTP device"""
+    try:
+        return EmailDevice.objects.filter(user=self, confirmed=True).exists()
+    except:
+        return False
+
+if not hasattr(User, 'is_verified'):
+    User.add_to_class('is_verified', is_verified)
+
+class OTPAdmin(OTPAdminSite):
+    pass
+admin_site = OTPAdmin(name='OTPAdmin')
+admin_site.register(User)
+admin_site.register(EmailDevice, EmailDeviceAdmin)
+
+for model_cls, model_admin in admin.site._registry.items():
+    if model_cls not in admin_site._registry:
+        admin_site.register(model_cls, model_admin.__class__)
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('admin/', admin_site.urls),
     path('books/', include("books.urls"))
 ]
