@@ -172,20 +172,20 @@ DEBUG = 'RENDER' not in os.environ
 # Allow the host provided by Render
 ALLOWED_HOSTS = ['*']
 
-# Application definition
 INSTALLED_APPS = [
+    'rest_framework',
+    'corsheaders',
+    'books',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Third party
-    'corsheaders', # Add this
-    'rest_framework',
-    # Local
-    'books',
+    'django_otp',
+    'django_otp.plugins.otp_email',
 ]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
