@@ -11,6 +11,8 @@ python manage.py collectstatic --no-input
 # Apply database migrations
 python manage.py migrate
 
-# --- ADD THIS LINE TO CREATE SUPERUSER AUTOMATICALLY ---
-# The "|| true" part prevents the deploy from failing if the user already exists
+# Create superuser (if not exists)
 python manage.py createsuperuser --noinput || true
+
+# --- ADD THIS LINE ---
+python manage.py setup_admin_otp
